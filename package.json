@@ -1,0 +1,30 @@
+{
+  "name": "lmsr",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A pool whose worst case a provider can read before they deposit.",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nirholas/lmsr.git"
+  },
+  "homepage": "https://lmsr.pages.dev",
+  "keywords": [
+    "uniswap",
+    "uniswap-v4",
+    "uniswap-hooks",
+    "defi",
+    "amm",
+    "solidity",
+    "curve",
+    "custom-curve",
+    "bounded-loss",
+    "scoring-rule",
+    "no-admin"
+  ],
+  "scripts": {
+    "build": "node web/build.mjs",
+    "contracts:build": "forge build",
+    "contracts:test": "forge test"
+  }
+}

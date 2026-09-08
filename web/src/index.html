@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LMSR: A pool whose worst case a provider can read before they deposit</title>
+<meta name="description" content="A pool whose worst case a provider can read before they deposit.">
+<link rel="canonical" href="https://lmsr.pages.dev/">
+<meta name="robots" content="index, follow, max-image-preview:large">
+<meta name="theme-color" content="#07080b">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="LMSR">
+<meta property="og:title" content="LMSR">
+<meta property="og:description" content="A pool whose worst case a provider can read before they deposit.">
+<meta property="og:url" content="https://lmsr.pages.dev/">
+<meta property="og:image" content="https://lmsr.pages.dev/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="LMSR">
+<meta name="twitter:description" content="A pool whose worst case a provider can read before they deposit.">
+<meta name="twitter:image" content="https://lmsr.pages.dev/og.png">
+
+<link rel="stylesheet" href="/assets/site.css">
+<link rel="alternate" type="text/plain" title="For language models" href="/llms.txt">
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js"}}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareSourceCode","name":"LMSR","description":"A pool whose worst case a provider can read before they deposit.","url":"https://lmsr.pages.dev","codeRepository":"https://github.com/nirholas/lmsr","programmingLanguage":"Solidity","runtimePlatform":"Ethereum Virtual Machine","license":"https://www.apache.org/licenses/LICENSE-2.0","keywords":"curve, custom-curve, bounded-loss, scoring-rule, no-admin","isPartOf":{"@type":"WebSite","name":"HookForge","url":"https://hookforge.pages.dev"}}</script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="masthead">
+  <div class="shell masthead__inner">
+    <a class="brand" href="/">LMSR</a>
+    <nav aria-label="Primary">
+      <a href="#how">How it works</a>
+      <a href="#using">Using it</a>
+      <a href="#deploy">Deploy</a>
+      <a href="https://github.com/nirholas/lmsr" rel="noopener">GitHub</a>
+      <a href="https://hookforge.pages.dev" rel="noopener">Catalogue</a>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+  <div class="stage">
+    <div class="scene">
+      <canvas data-permissions="{&quot;afterRemoveLiquidityReturnsDelta&quot;:false,&quot;afterAddLiquidityReturnsDelta&quot;:false,&quot;afterSwapReturnsDelta&quot;:false,&quot;beforeSwapReturnsDelta&quot;:true,&quot;afterDonate&quot;:false,&quot;beforeDonate&quot;:false,&quot;afterSwap&quot;:false,&quot;beforeSwap&quot;:true,&quot;afterRemoveLiquidity&quot;:false,&quot;beforeRemoveLiquidity&quot;:true,&quot;afterAddLiquidity&quot;:false,&quot;beforeAddLiquidity&quot;:true,&quot;afterInitialize&quot;:false,&quot;beforeInitialize&quot;:true}" aria-hidden="true"></canvas>
+      <p class="scene__fallback">LMSR implements 5 of the fourteen Uniswap v4 callbacks: beforeInitialize, beforeAddLiquidity, beforeRemoveLiquidity, beforeSwap, beforeSwapReturnsDelta.</p>
+    </div>
+    <p class="scene__hint">drag to orbit</p>
+
+  <section class="shell hero">
+    <p class="eyebrow">Uniswap v4 hook &middot; Curves</p>
+    <h1>LMSR</h1>
+    <p class="lede">A pool whose worst case a provider can read before they deposit.</p>
+    <div class="cta-row">
+      <a class="btn btn--primary" href="https://github.com/nirholas/lmsr" rel="noopener">Source on GitHub</a>
+      <a class="btn" href="#using">Use it in a pool</a>
+      <a class="btn" href="/hook.json">Manifest JSON</a>
+    </div>
+
+    <dl class="stats">
+      <div class="stat"><dt>Family</dt><dd>Curves</dd></div>
+      <div class="stat"><dt>Callbacks</dt><dd>5 of 14</dd></div>
+      <div class="stat"><dt>Fee</dt><dd>static</dd></div>
+      <div class="stat"><dt>Admin keys</dt><dd>none</dd></div>
+      <div class="stat"><dt>Licence</dt><dd>Apache-2.0</dd></div>
+    </dl>
+  </section>
+  </div>
+
+  <section class="shell">
+    <h2 id="how">How it works</h2>
+      <p>A constant-product provider's exposure has no upper bound. As the price moves, the position converges on holding only the losing side, and the loss against simply having held the two tokens grows without limit. Everyone knows this and nobody can quote it, because the answer depends on where the price goes and the curve quotes at every price there is.</p>
+      <p>Robin Hanson's logarithmic market scoring rule was built for exactly this problem, in prediction markets, in 2003: a market maker that will always quote, and whose total loss is bounded by a constant chosen when the market opens. The bound is the whole reason it is used. It has never been the curve of a general-purpose AMM because a bounded-loss maker must also be a bounded-*range* maker, and a pool that stops quoting past a price is a worse product right up until the day it is the only pool that did not get emptied.</p>
+      <p>This pool holds the invariant exp(-reserve0 / b) + exp(-reserve1 / b) = k which prices token0 in token1 at exp((reserve1 - reserve0) / b): exactly one at balance, falling smoothly as the pool fills with token0. The parameter `b` is depth and it is also the bound. Larger `b` is flatter near parity and a wider quoting range; smaller `b` is a tighter market that gives up sooner.</p>
+      <p>There is one number to choose and it means one thing. What a provider gets that no constant-product pool offers is a figure: {maxLoss} is what this curve can cost them in the worst case anybody can construct, published on-chain, before they deposit. Beyond the range the curve refuses the trade instead of quoting a price it cannot honour, which is the same promise stated from the other end.</p>
+
+    <div class="callout callout--prior"><h3>Prior art</h3><p>The scoring rule is Hanson's, and Gnosis, Augur and Polymarket's predecessors all ran variants of it for prediction markets, where outcomes sum to one and shares are minted rather than held. Constant-product, StableSwap and the v4 custom curves built on them are all unbounded-range makers. Bringing a bounded-loss scoring rule to a two-sided token pool, with the bound published as a view a provider reads before depositing, is the contribution here.</p></div>
+    <div class="callout callout--warn"><h3>Where it does not help</h3><p>The range is finite by construction, so a pool whose true price leaves the band stops quoting on that side and holds the losing asset until the price returns; that is the bounded loss being collected, not a malfunction. It is the right curve for pairs expected to stay near a ratio and the wrong one for anything that can genuinely revalue. The maths runs through fixed-point exponentials, so a swap costs meaningfully more gas than constant product.</p>
+      <p>And `b` is fixed at deployment: a pool that wants a different depth is a different pool.</p></div>
+
+    <h2 id="using">Using it</h2>
+    <p>
+      Uniswap v4 removed <code>hookData</code> from <code>initialize</code>, so per-pool parameters arrive out of band.
+      Fix them for a pool key whose pool does not exist yet, then initialize. Nobody can change them afterwards,
+      including you.
+    </p>
+    <pre><code>poolManager.initialize(key, startingSqrtPriceX96);</code></pre>
+    
+
+    <h3>Parameters</h3>
+    <p>This hook takes no per-pool configuration.</p>
+
+    <h3>From TypeScript</h3>
+    <pre><code>npm i @hookforge/sdk
+
+import {getHook, hookAddress, poolKeyFor} from "@hookforge/sdk";
+
+const hook = getHook("lmsr");
+const key  = poolKeyFor({
+  hook: hookAddress("lmsr", 8453),   // Base
+  currencyA: USDC, currencyB: WETH,
+  tickSpacing: 60,
+});</code></pre>
+
+    <h2>What it reverts with</h2>
+    <table>
+        <thead><tr><th>Error</th><th>Meaning</th></tr></thead>
+        <tbody><tr><td><code>AlreadyInitialized()</code></td><td>Hook was already initialized.</td></tr>
+          <tr><td><code>AmountTooSmall()</code></td><td>A deposit was too small to mint any shares, or a withdrawal too small to return anything.</td></tr>
+          <tr><td><code>ERC20InsufficientAllowance(address,uint256,uint256)</code></td><td>Indicates a failure with the <code>spender</code>’s <code>allowance</code>. Used in transfers.</td></tr>
+          <tr><td><code>ERC20InsufficientBalance(address,uint256,uint256)</code></td><td>Indicates an error related to the current <code>balance</code> of a <code>sender</code>. Used in transfers.</td></tr>
+          <tr><td><code>ERC20InvalidApprover(address)</code></td><td>Indicates a failure with the <code>approver</code> of a token to be approved. Used in approvals.</td></tr>
+          <tr><td><code>ERC20InvalidReceiver(address)</code></td><td>Indicates a failure with the token <code>receiver</code>. Used in transfers.</td></tr>
+          <tr><td><code>ERC20InvalidSender(address)</code></td><td>Indicates a failure with the token <code>sender</code>. Used in transfers.</td></tr>
+          <tr><td><code>ERC20InvalidSpender(address)</code></td><td>Indicates a failure with the <code>spender</code> to be approved. Used in approvals.</td></tr>
+          <tr><td><code>ExpiredPastDeadline()</code></td><td>A liquidity modification order was attempted to be executed after the deadline.</td></tr>
+          <tr><td><code>InsufficientInitialLiquidity()</code></td><td>The first deposit must exceed the permanently locked minimum.</td></tr>
+          <tr><td><code>InsufficientReserves()</code></td><td>The trade wants more than the curve will give up at any price.</td></tr>
+          <tr><td><code>InvalidB()</code></td><td>A liquidity parameter of zero would make the curve a step function.</td></tr>
+          <tr><td><code>InvalidFee()</code></td><td>A fee at or above the whole trade is not a fee.</td></tr>
+          <tr><td><code>InvalidNativePayer(address)</code></td><td>The native currency was settled on behalf of a <code>payer</code> other than the contract paying it.</td></tr>
+          <tr><td><code>InvalidNativeValue()</code></td><td>Native currency was not sent with the correct amount.</td></tr>
+          <tr><td><code>LiquidityOnlyViaHook()</code></td><td>Liquidity was attempted to be added or removed via the <code>PoolManager</code> instead of the hook.</td></tr>
+          <tr><td><code>NoReserves()</code></td><td>The pool holds nothing on one side, so there is no curve to quote against.</td></tr>
+          <tr><td><code>OutOfRange()</code></td><td>The reserves are too lopsided for the curve to quote. See {MAX_EXPONENT}.</td></tr>
+          <tr><td><code>PoolNotInitialized()</code></td><td>Pool was not initialized.</td></tr>
+          <tr><td><code>SafeCastOverflowedIntToUint(int256)</code></td><td>An int value doesn't fit in a uint of <code>bits</code> size.</td></tr>
+          <tr><td><code>SafeCastOverflowedUintToInt(uint256)</code></td><td>A uint value doesn't fit in an int of <code>bits</code> size.</td></tr>
+          <tr><td><code>SafeERC20FailedOperation(address)</code></td><td>An operation with an ERC-20 token failed.</td></tr>
+          <tr><td><code>TooMuchSlippage()</code></td><td>Principal delta of liquidity modification resulted in too much slippage.</td></tr></tbody>
+      </table>
+
+    <h2>The callbacks it claims</h2>
+    <p>
+      Uniswap v4 reads a hook's permissions from the low fourteen bits of its own address, which is why deploying one
+      means mining a CREATE2 salt. This hook claims 5, so every deployment of it has an address ending
+      in <code>0x2a88</code>.
+    </p>
+    <ul class="flags"><li class="flag flag--on">beforeInitialize</li><li class="flag">afterInitialize</li><li class="flag flag--on">beforeAddLiquidity</li><li class="flag">afterAddLiquidity</li><li class="flag flag--on">beforeRemoveLiquidity</li><li class="flag">afterRemoveLiquidity</li><li class="flag flag--on">beforeSwap</li><li class="flag">afterSwap</li><li class="flag">beforeDonate</li><li class="flag">afterDonate</li><li class="flag flag--on">beforeSwapReturnsDelta</li><li class="flag">afterSwapReturnsDelta</li><li class="flag">afterAddLiquidityReturnsDelta</li><li class="flag">afterRemoveLiquidityReturnsDelta</li></ul>
+
+    <h2>It says what it is, on-chain</h2>
+    <p>
+      Nothing about a hook's address tells an indexer, a wallet, a router or an agent what the pool does, which is why
+      hook discovery today is a curated list. This hook answers for itself, in one <code>eth_call</code>, with no
+      registry in the loop.
+    </p>
+    <pre><code>cast call $HOOK "hookName()(string)"    # LMSR
+cast call $HOOK "specURI()(string)"     # https://lmsr.pages.dev/hook.json
+cast call $HOOK "hookTags()(string[])"  # curve, custom-curve, bounded-loss, scoring-rule, no-admin</code></pre>
+
+    <h2 id="deploy">Build, test and deploy</h2>
+    <pre><code>git clone --recurse-submodules https://github.com/nirholas/lmsr
+cd lmsr
+forge build &amp;&amp; forge test
+
+# Dry run: mines the salt, prints the address, sends nothing.
+forge script script/Deploy.s.sol --rpc-url $RPC_URL
+
+# For real.
+forge script script/Deploy.s.sol --rpc-url $RPC_URL --broadcast --verify</code></pre>
+
+    <div class="callout callout--warn">
+      <h3>Status</h3>
+      <p>
+        <strong>Unaudited.</strong> Built to an audited shape, on OpenZeppelin's audited hook bases, and tested against
+        a real <code>PoolManager</code>. No third party has reviewed it. Read "where it does not help" above before
+        putting money behind it. Not affiliated with Uniswap Labs.
+      </p>
+    </div>
+  </section>
+
+  <section class="shell">
+    <h2 id="try">Try it</h2>
+    <p>
+      This is the hook running, not a picture of it. Connect a wallet on a chain it is deployed to, or bring the whole
+      stack up locally in one command and use it with no funds and no wallet risk at all.
+    </p>
+    <div class="demo" data-demo="lmsr">
+      <div class="panel panel--empty">
+        <p>Loading the demo… if this does not change, JavaScript is blocked and the demo cannot run.</p>
+      </div>
+    </div>
+    <details class="raw">
+      <summary>Run the whole thing locally</summary>
+      <pre><code>git clone --recurse-submodules https://github.com/nirholas/lmsr
+cd lmsr
+
+anvil &amp;
+forge script script/DeployLocal.s.sol --rpc-url http://127.0.0.1:8545 --broadcast \
+  --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
+
+node web/build.mjs &amp;&amp; npx serve web/dist</code></pre>
+      <p class="muted">
+        The deploy script writes <code>web/local.json</code> itself and the build merges it, so the page points at the
+        chain you just created without you editing anything. Point a wallet at
+        <code>http://127.0.0.1:8545</code> and every button on this page works.
+      </p>
+      <p class="muted">
+        Anvil's first account is pre-funded and its key is public by design. Never use it anywhere real.
+      </p>
+    </details>
+  </section>
+  <script type="application/json" id="deployments">{"chains":{},"errors":[{"type":"error","name":"AlreadyInitialized","inputs":[]},{"type":"error","name":"AmountTooSmall","inputs":[]},{"type":"error","name":"ERC20InsufficientAllowance","inputs":[{"name":"spender","type":"address","internalType":"address"},{"name":"allowance","type":"uint256","internalType":"uint256"},{"name":"needed","type":"uint256","internalType":"uint256"}]},{"type":"error","name":"ERC20InsufficientBalance","inputs":[{"name":"sender","type":"address","internalType":"address"},{"name":"balance","type":"uint256","internalType":"uint256"},{"name":"needed","type":"uint256","internalType":"uint256"}]},{"type":"error","name":"ERC20InvalidApprover","inputs":[{"name":"approver","type":"address","internalType":"address"}]},{"type":"error","name":"ERC20InvalidReceiver","inputs":[{"name":"receiver","type":"address","internalType":"address"}]},{"type":"error","name":"ERC20InvalidSender","inputs":[{"name":"sender","type":"address","internalType":"address"}]},{"type":"error","name":"ERC20InvalidSpender","inputs":[{"name":"spender","type":"address","internalType":"address"}]},{"type":"error","name":"ExpiredPastDeadline","inputs":[]},{"type":"error","name":"HookNotImplemented","inputs":[]},{"type":"error","name":"InsufficientInitialLiquidity","inputs":[]},{"type":"error","name":"InsufficientReserves","inputs":[]},{"type":"error","name":"InvalidB","inputs":[]},{"type":"error","name":"InvalidFee","inputs":[]},{"type":"error","name":"InvalidNativePayer","inputs":[{"name":"payer","type":"address","internalType":"address"}]},{"type":"error","name":"InvalidNativeValue","inputs":[]},{"type":"error","name":"InvalidPool","inputs":[]},{"type":"error","name":"LiquidityOnlyViaHook","inputs":[]},{"type":"error","name":"NoReserves","inputs":[]},{"type":"error","name":"NotPoolManager","inputs":[]},{"type":"error","name":"OutOfRange","inputs":[]},{"type":"error","name":"PRBMath_MulDiv18_Overflow","inputs":[{"name":"x","type":"uint256","internalType":"uint256"},{"name":"y","type":"uint256","internalType":"uint256"}]},{"type":"error","name":"PRBMath_SD59x18_Exp2_InputTooBig","inputs":[{"name":"x","type":"int256","internalType":"SD59x18"}]},{"type":"error","name":"PRBMath_SD59x18_Exp_InputTooBig","inputs":[{"name":"x","type":"int256","internalType":"SD59x18"}]},{"type":"error","name":"PRBMath_SD59x18_Log_InputTooSmall","inputs":[{"name":"x","type":"int256","internalType":"SD59x18"}]},{"type":"error","name":"PRBMath_SD59x18_Mul_InputTooSmall","inputs":[]},{"type":"error","name":"PRBMath_SD59x18_Mul_Overflow","inputs":[{"name":"x","type":"int256","internalType":"SD59x18"},{"name":"y","type":"int256","internalType":"SD59x18"}]},{"type":"error","name":"PoolNotInitialized","inputs":[]},{"type":"error","name":"SafeCastOverflowedIntToUint","inputs":[{"name":"value","type":"int256","internalType":"int256"}]},{"type":"error","name":"SafeCastOverflowedUintToInt","inputs":[{"name":"value","type":"uint256","internalType":"uint256"}]},{"type":"error","name":"SafeERC20FailedOperation","inputs":[{"name":"token","type":"address","internalType":"address"}]},{"type":"error","name":"TooMuchSlippage","inputs":[]}],"demo":{"panel":"curve","title":"A curve whose worst case is a number you can read","lede":"A constant-product provider's loss has no upper bound. Hanson's scoring rule, built for prediction markets in 2003, is a market maker that always quotes and whose total loss is bounded by a constant chosen when the market opens. This pool uses it, and publishes that bound on-chain so you can read it before you deposit. Try a trade a thousand times the pool's size and watch it settle.","stats":[{"name":"spotPrice","label":"Price of currency0","format":"wad"},{"name":"maxLoss","label":"Most this curve can ever cost providers","format":"token"},{"name":"b","label":"Liquidity parameter","format":"token"},{"name":"swapFeeBps","label":"Swap fee","format":"bps"}],"localDeploy":{"flags":"Hooks.BEFORE_INITIALIZE_FLAG | Hooks.BEFORE_ADD_LIQUIDITY_FLAG | Hooks.BEFORE_REMOVE_LIQUIDITY_FLAG | Hooks.BEFORE_SWAP_FLAG | Hooks.BEFORE_SWAP_RETURNS_DELTA_FLAG","curve":true,"constructorArgs":"IPoolManager(address(manager)), 50e18, 30, \"LMSR LP\", \"LMSR-LP\"","dynamicFee":false}}}</script>
+  <script type="module" src="/assets/demo.js"></script>
+</main>
+
+<footer class="foot">
+  <div class="shell">
+    <p>
+      <a href="https://github.com/nirholas/lmsr" rel="noopener">Source</a> &middot;
+      <a href="/hook.json">Manifest</a> &middot;
+      <a href="/llms.txt">llms.txt</a> &middot;
+      <a href="https://hookforge.pages.dev" rel="noopener">The rest of the catalogue</a>
+    </p>
+    <p>Apache-2.0 licensed. Not affiliated with Uniswap Labs.</p>
+  </div>
+</footer>
+<script type="module" src="/assets/scene.js"></script>
+</body>
+</html>
