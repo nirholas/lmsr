@@ -1,0 +1,10 @@
+cff-version: 1.2.0
+message: If you use this software, please cite it as below.
+title: "lmsr"
+abstract: "A pool whose worst case a provider can read before they deposit."
+license: Apache-2.0
+repository-code: "https://github.com/nirholas/lmsr"
+url: "https://three.ws"
+authors:
+  - name: three.ws
+    website: "https://three.ws"
